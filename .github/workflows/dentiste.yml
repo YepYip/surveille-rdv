@@ -20,13 +20,13 @@ jobs:
     # Une exécution normale dure ~25 s ; on coupe vite si le site ne répond pas.
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
       - name: Restaurer l'état précédent
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .etat
           key: etat-${{ github.run_id }}
@@ -43,7 +43,7 @@ jobs:
           TEST: ${{ inputs.test && '1' || '0' }}
       - name: Sauvegarder l'état
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .etat
           key: etat-${{ github.run_id }}

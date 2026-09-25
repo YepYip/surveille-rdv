@@ -23,6 +23,7 @@ Surveille les créneaux « Premier RDV » d'un praticien sur un site de prise de
 - État entre deux exécutions : dossier `.etat/`, conservé via le cache Actions (`actions/cache/restore` + `save`).
   - `empreinte.txt` : JSON `{"prochain": "AAAA-MM-JJ" ou null, "heures": {heure: occurrences}, "complet": true/false}` du passage précédent.
   - `panne.txt` : présent quand une panne a déjà été signalée ; une seule alerte par panne (avec capture d'écran), puis une notification « rétablie ».
+- Notifications Pushover : `ttl` de 7 jours (effacées automatiquement des appareils ensuite).
 - Secrets requis : `URL_RDV`, `PUSHOVER_TOKEN`, `PUSHOVER_USER`.
 
 ## Contraintes

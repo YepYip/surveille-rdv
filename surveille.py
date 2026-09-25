@@ -24,7 +24,8 @@ def envoyer(titre, message, prio="high", capture=None):
     """Notification Pushover, avec éventuellement une capture d'écran (JPEG) en pièce jointe."""
     data = {"token": os.environ["PUSHOVER_TOKEN"], "user": os.environ["PUSHOVER_USER"],
             "title": titre, "message": message, "priority": 1 if prio == "high" else 0,
-            "url": URL, "url_title": "Réserver"}
+            "url": URL, "url_title": "Réserver",
+            "ttl": 7 * 24 * 3600}  # la notification s'efface d'elle-même au bout de 7 jours
     api = "https://api.pushover.net/1/messages.json"
     if capture:
         r = requests.post(api, timeout=30, data=data,

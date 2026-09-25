@@ -1,0 +1,49 @@
+name: Surveille dentiste
+on:
+  # Lancé de l'extérieur par un service de cron (appel API workflow_dispatch avec test=false) :
+  # le planificateur de GitHub saute une grande partie des exécutions planifiées.
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Envoyer une notification de test (avec capture d'écran)"
+        type: boolean
+        default: true
+
+# Un seul passage à la fois : l'état (.etat) est lu puis réécrit à chaque passage.
+concurrency:
+  group: surveille
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # Une exécution normale dure ~25 s ; on coupe vite si le site ne répond pas.
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Restaurer l'état précédent
+        uses: actions/cache/restore@v4
+        with:
+          path: .etat
+          key: etat-${{ github.run_id }}
+          restore-keys: etat-
+      # Utilise le Google Chrome préinstallé du runner : pas de téléchargement de navigateur.
+      - run: pip install -r requirements.txt
+      # Dépôt public : la page surveillée reste secrète (URL_RDV) et le script n'écrit
+      # rien de ce que le site affiche dans les logs.
+      - run: python surveille.py
+        env:
+          URL_RDV: ${{ secrets.URL_RDV }}
+          PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
+          PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
+          TEST: ${{ inputs.test && '1' || '0' }}
+      - name: Sauvegarder l'état
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .etat
+          key: etat-${{ github.run_id }}

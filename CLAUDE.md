@@ -10,6 +10,11 @@ Surveille les créneaux « Premier RDV » d'un praticien sur un site de prise de
   - Les logs GitHub Actions d'un dépôt public sont visibles de tous : le script n'y écrit que des dates, des heures et des oui/non, jamais le texte de la page ni une trace d'erreur complète (`resume_erreur`).
   - Pas d'artefact (`upload-artifact`) : il serait public. Les captures d'écran de diagnostic partent uniquement par Pushover (notification de test ou de panne).
 
+- **Chaîne d'approvisionnement** (le job manipule des secrets) :
+  - Actions GitHub figées sur un SHA de commit, avec la version en commentaire. Pour mettre à jour : `git ls-remote https://github.com/actions/<action> refs/tags/vX.Y.Z`, vérifier le `using: node24` de son `action.yml`.
+  - Dépendances Python figées avec empreintes dans `requirements.txt`, installées avec `pip install --require-hashes`. Pour mettre à jour : nouvelle version + toutes les `sha256` de `https://pypi.org/pypi/<paquet>/<version>/json`, dépendances transitives comprises.
+  - `permissions: contents: read` et `persist-credentials: false` : ne pas les élargir.
+
 ## Fonctionnement
 
 - `.github/workflows/dentiste.yml` : déclenché uniquement par `workflow_dispatch` (option `test` qui envoie une notification de test avec capture d'écran ; cochée par défaut pour les lancements manuels). `concurrency` : un seul passage à la fois.

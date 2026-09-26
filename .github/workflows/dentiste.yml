@@ -9,6 +9,10 @@ on:
         type: boolean
         default: true
 
+# Moindre privilège : le jeton GitHub du job ne peut que lire le dépôt.
+permissions:
+  contents: read
+
 # Un seul passage à la fois : l'état (.etat) est lu puis réécrit à chaque passage.
 concurrency:
   group: surveille
@@ -19,20 +23,24 @@ jobs:
     runs-on: ubuntu-latest
     # Une exécution normale dure ~25 s ; on coupe vite si le site ne répond pas.
     timeout-minutes: 2
+    # Actions figées sur un commit (et non un tag, qui peut être déplacé) : le job manipule des secrets.
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false  # le jeton n'est pas laissé dans .git/config pendant le job
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
       - name: Restaurer l'état précédent
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: .etat
           key: etat-${{ github.run_id }}
           restore-keys: etat-
       # Utilise le Google Chrome préinstallé du runner : pas de téléchargement de navigateur.
-      - run: pip install -r requirements.txt
+      # Versions et empreintes figées : un paquet modifié sur PyPI est refusé.
+      - run: pip install --require-hashes -r requirements.txt
       # Dépôt public : la page surveillée reste secrète (URL_RDV) et le script n'écrit
       # rien de ce que le site affiche dans les logs.
       - run: python surveille.py
@@ -43,7 +51,7 @@ jobs:
           TEST: ${{ inputs.test && '1' || '0' }}
       - name: Sauvegarder l'état
         if: always()
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: .etat
           key: etat-${{ github.run_id }}

@@ -8,7 +8,9 @@ import os, re, sys, json, time, datetime, pathlib, requests
 from collections import Counter
 from playwright.sync_api import sync_playwright
 
-URL = os.environ["URL_RDV"]
+URL = os.environ.get("URL_RDV", "").strip()
+if not URL.startswith("https://"):
+    sys.exit("Secret URL_RDV absent ou invalide (doit commencer par https://)")
 ETAT = pathlib.Path(".etat/empreinte.txt")  # passage précédent (JSON) : date du prochain RDV + heures vues
 PANNE = pathlib.Path(".etat/panne.txt")  # présent tant que la panne a déjà été signalée
 HEURE = re.compile(r"\b(\d{1,2})\s?[h:]\s?(\d{2})\b")

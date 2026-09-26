@@ -1,0 +1,19 @@
+# Propose chaque mois des pull requests de mise à jour : actions GitHub (SHA figés,
+# commentaire de version mis à jour) et dépendances Python (versions et empreintes).
+# À relire puis fusionner à la main ; rien n'est appliqué automatiquement.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      python:
+        patterns: ["*"]

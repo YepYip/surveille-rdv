@@ -14,6 +14,7 @@ Surveille les créneaux « Premier RDV » d'un praticien sur un site de prise de
   - Actions GitHub figées sur un SHA de commit, avec la version en commentaire. Pour mettre à jour : `git ls-remote https://github.com/actions/<action> refs/tags/vX.Y.Z`, vérifier le `using: node24` de son `action.yml`.
   - Dépendances Python figées avec empreintes dans `requirements.txt`, installées avec `pip install --require-hashes`. Pour mettre à jour : nouvelle version + toutes les `sha256` de `https://pypi.org/pypi/<paquet>/<version>/json`, dépendances transitives comprises.
   - `permissions: contents: read` et `persist-credentials: false` : ne pas les élargir.
+  - `.github/dependabot.yml` : Dependabot propose chaque mois une pull request groupée pour les actions et une pour les dépendances Python ; l'utilisateur les relit et les fusionne (exception à la règle « pas de PR », qui ne concerne que les modifications faites par Claude).
 
 ## Fonctionnement
 

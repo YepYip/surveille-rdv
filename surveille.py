@@ -90,9 +90,10 @@ def prochaine_date(texte):
 def lire_etat():
     try:
         etat = json.loads(ETAT.read_text())
-        return etat.get("prochain"), Counter(etat.get("heures", {})), etat.get("complet")
-    except (OSError, ValueError, AttributeError):
-        return None, Counter(), None  # premier passage, ou ancien format
+        return (etat.get("prochain"), Counter(etat.get("heures", {})), etat.get("complet"),
+                int(etat.get("absences", 0)))
+    except (OSError, ValueError, AttributeError, TypeError):
+        return None, Counter(), None, 0  # premier passage, ou ancien format
 
 
 def lire_texte(page):
@@ -140,6 +141,14 @@ try:
         test = os.environ.get("TEST") == "1"
         if test:
             capture = capturer(page)
+        # Le calendrier peut s'afficher avec retard : tant qu'on ne voit ni « Aucune disponibilité »,
+        # ni date, ni heure, on relit la page (jusqu'à 15 s) avant de conclure. Sans cela, une page
+        # lue trop tôt passait pour une disparition du message (fausse alerte).
+        for _ in range(15):
+            if COMPLET.search(texte) or PROCHAIN.search(texte) or heures(texte):
+                break
+            page.wait_for_timeout(1000)
+            texte = lire_texte(page)
         prochain = prochaine_date(texte)
         complet = bool(COMPLET.search(texte))
         vues = heures(texte)
@@ -163,35 +172,39 @@ try:
     # dans la semaine en cours (le message n'est alors pas affiché).
     if prochain is None and vues:
         prochain = datetime.date.today()
-    ancien_prochain, anciennes_heures, ancien_complet = lire_etat()
+    ancien_prochain, anciennes_heures, ancien_complet, anciennes_absences = lire_etat()
     ancien_prochain = datetime.date.fromisoformat(ancien_prochain) if ancien_prochain else None
     nouvelles_heures = sorted((vues - anciennes_heures).elements())
     alerte = prochain is not None and (
         ancien_prochain is None or prochain < ancien_prochain  # un créneau plus proche s'est libéré
         or (prochain == ancien_prochain and nouvelles_heures)  # un autre créneau, même semaine
     )
-    # Filet de sécurité : « Aucune disponibilité » a disparu, même si aucune date ni heure n'a été reconnue
-    # (créneaux affichés dans un format inattendu).
-    message_disparu = ancien_complet is True and not complet
+    # Filet de sécurité : ni « Aucune disponibilité », ni date, ni heure (créneaux affichés dans un
+    # format inattendu ?). Alerte seulement au 2e passage consécutif dans ce cas, pour écarter une
+    # page lue trop tôt ou un affichage raté ; une seule alerte par épisode.
+    absences = anciennes_absences + 1 if (not complet and prochain is None and not vues) else 0
+    message_disparu = absences == 2
     alerte = alerte or message_disparu
     etape("fin de la lecture")
     print("Prochain RDV :", prochain or "aucun", "| passage précédent :", ancien_prochain or "aucun")
     print("Heures vues :", dict(sorted(vues.items())) or "aucune")
     print("« Aucune disponibilité » affiché :", "oui" if complet else "non",
-          "| passage précédent :", {True: "oui", False: "non"}.get(ancien_complet, "inconnu"))
+          "| passage précédent :", {True: "oui", False: "non"}.get(ancien_complet, "inconnu"),
+          "| passages consécutifs sans message, date ni heure :", absences)
     print("Alerte :", "oui" if alerte else "non")
     detail = f"Prochain RDV : {prochain:%d/%m}" if prochain else "Aucun RDV disponible"
     if vues:
         detail += " — horaires : " + ", ".join(sorted(vues)[:10])
     if message_disparu and not prochain:
-        detail = "Le message « Aucune disponibilité » a disparu : de nouveaux créneaux sont peut-être ouverts."
+        detail = ("Le message « Aucune disponibilité » n'apparaît plus depuis 2 passages : "
+                  "de nouveaux créneaux sont peut-être ouverts.")
     if test:
         envoyer("Test surveillance dentiste", f"Ça marche ! {detail}", prio="default", capture=capture)
     if alerte:
         envoyer("Créneau dentiste dispo !", detail)
     ETAT.parent.mkdir(exist_ok=True)
     ETAT.write_text(json.dumps({"prochain": prochain.isoformat() if prochain else None, "heures": vues,
-                                 "complet": complet}))
+                                 "complet": complet, "absences": absences}))
     if PANNE.exists():
         envoyer("Surveillance dentiste rétablie", "La vérification fonctionne de nouveau.", prio="default")
         PANNE.unlink()

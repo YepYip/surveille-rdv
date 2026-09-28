@@ -25,9 +25,9 @@ Surveille les créneaux « Premier RDV » d'un praticien sur un site de prise de
   - Planning complet : le site affiche « Aucune disponibilité — Le planning du praticien est à présent complet… » (le script lit alors « Prochain RDV : aucun », sans alerte).
   - Le calendrier n'affiche que la semaine en cours. Si elle est complète, le site affiche « Prochain rdv disponible à partir du JJ/MM » (regex `PROCHAIN`) : le script lit cette date, puis clique sur le message pour ouvrir la semaine concernée et lire l'heure.
   - Heures : plages d'ouverture retirées (« 09:00 - 12:00 », regex `PLAGE`), puis occurrences de chaque heure `HH:MM` comptées. Ne pas filtrer des heures par valeur : un créneau à l'heure d'ouverture a déjà été manqué ainsi.
-  - Alerte si la date du prochain RDV se rapproche (un créneau s'est libéré), ou si, à date égale, une heure apparaît plus souvent qu'au passage précédent. Pas d'alerte quand la date recule (créneau pris). Filet de sécurité : alerte aussi quand « Aucune disponibilité » (regex `COMPLET`) était affiché au passage précédent et ne l'est plus, même si aucune date ni heure n'est reconnue.
+  - Alerte si la date du prochain RDV se rapproche (un créneau s'est libéré), ou si, à date égale, une heure apparaît plus souvent qu'au passage précédent. Pas d'alerte quand la date recule (créneau pris). Filet de sécurité : si la page ne montre ni « Aucune disponibilité » (regex `COMPLET`), ni date, ni heure, le script relit la page chaque seconde (15 s max), puis n'alerte qu'au 2e passage consécutif dans cet état (compteur `absences`), une seule fois par épisode. Une alerte immédiate sur simple disparition du message a produit une fausse alerte (page lue avant l'affichage du calendrier).
 - État entre deux exécutions : dossier `.etat/`, conservé via le cache Actions (`actions/cache/restore` + `save`).
-  - `empreinte.txt` : JSON `{"prochain": "AAAA-MM-JJ" ou null, "heures": {heure: occurrences}, "complet": true/false}` du passage précédent.
+  - `empreinte.txt` : JSON `{"prochain": "AAAA-MM-JJ" ou null, "heures": {heure: occurrences}, "complet": true/false, "absences": n}` du passage précédent.
   - `panne.txt` : présent quand une panne a déjà été signalée ; une seule alerte par panne (avec capture d'écran), puis une notification « rétablie ».
 - Notifications Pushover : `ttl` de 7 jours (effacées automatiquement des appareils ensuite).
 - Secrets requis : `URL_RDV`, `PUSHOVER_TOKEN`, `PUSHOVER_USER`.
@@ -40,4 +40,4 @@ Surveille les créneaux « Premier RDV » d'un praticien sur un site de prise de
 ## Vérifier
 
 - Onglet Actions → « Surveille dentiste » → Run workflow avec `test` coché : une notification « Ça marche ! » avec capture d'écran doit arriver.
-- Dans les logs de l'étape `python surveille.py`, les lignes `Message « prochain rdv disponible » trouvé`, `Prochain RDV`, `Heures vues`, `« Aucune disponibilité » affiché` et `Alerte` montrent ce qui a été lu.
+- Dans les logs de l'étape `python surveille.py`, les lignes `Message « prochain rdv disponible » trouvé`, `Prochain RDV`, `Heures vues`, `« Aucune disponibilité » affiché` (avec le compteur de passages sans message, date ni heure) et `Alerte` montrent ce qui a été lu.

@@ -107,7 +107,7 @@ def lire_texte(page):
     return "\n".join(textes)
 
 
-capture = None  # dernière capture d'écran, jointe aux notifications de test et de panne
+capture = None  # dernière capture d'écran, jointe aux alertes, aux tests et aux pannes
 try:
     with sync_playwright() as p:
         # Google Chrome est préinstallé sur les runners GitHub : pas de navigateur à télécharger.
@@ -139,8 +139,6 @@ try:
         page.wait_for_timeout(3000)
         texte = lire_texte(page)
         test = os.environ.get("TEST") == "1"
-        if test:
-            capture = capturer(page)
         # Le calendrier peut s'afficher avec retard : tant qu'on ne voit ni « Aucune disponibilité »,
         # ni date, ni heure, on relit la page (jusqu'à 15 s) avant de conclure. Sans cela, une page
         # lue trop tôt passait pour une disparition du message (fausse alerte).
@@ -149,6 +147,9 @@ try:
                 break
             page.wait_for_timeout(1000)
             texte = lire_texte(page)
+        # Capture à chaque passage (~0,5 s), une fois le calendrier affiché : elle accompagne
+        # l'alerte si un créneau apparaît.
+        capture = capturer(page)
         prochain = prochaine_date(texte)
         complet = bool(COMPLET.search(texte))
         vues = heures(texte)
@@ -162,8 +163,7 @@ try:
                 texte = lire_texte(page)
                 vues = heures(texte)
                 etape("semaine du prochain RDV chargée")
-                if test:
-                    capture = capturer(page)
+                capture = capturer(page)  # la semaine du créneau, plus parlante que la semaine en cours
             except Exception as e:
                 print("Impossible d'ouvrir la semaine du prochain RDV :", resume_erreur(e))
         browser.close()
@@ -201,7 +201,7 @@ try:
     if test:
         envoyer("Test surveillance dentiste", f"Ça marche ! {detail}", prio="default", capture=capture)
     if alerte:
-        envoyer("Créneau dentiste dispo !", detail)
+        envoyer("Créneau dentiste dispo !", detail, capture=capture)
     ETAT.parent.mkdir(exist_ok=True)
     ETAT.write_text(json.dumps({"prochain": prochain.isoformat() if prochain else None, "heures": vues,
                                  "complet": complet, "absences": absences}))

@@ -8,7 +8,7 @@ Surveille les créneaux « Premier RDV » d'un praticien sur un site de prise de
 - Les messages de commit et les commentaires du code sont en français.
 - **Dépôt public et anonyme.** Ne jamais écrire dans le code, la documentation, les messages de commit ni les logs d'exécution quoi que ce soit qui identifie la cible : URL, nom du cabinet, ville, adresse, téléphone, noms des praticiens. La page surveillée est uniquement dans le secret `URL_RDV`.
   - Les logs GitHub Actions d'un dépôt public sont visibles de tous : le script n'y écrit que des dates, des heures et des oui/non, jamais le texte de la page ni une trace d'erreur complète (`resume_erreur`).
-  - Pas d'artefact (`upload-artifact`) : il serait public. Les captures d'écran de diagnostic partent uniquement par Pushover (notification de test ou de panne).
+  - Pas d'artefact (`upload-artifact`) : il serait public. Les captures d'écran partent uniquement par Pushover : jointes aux alertes de créneau (semaine du prochain RDV si le script a pu l'ouvrir), aux tests et aux pannes.
 
 - **Chaîne d'approvisionnement** (le job manipule des secrets) :
   - Actions GitHub figées sur un SHA de commit, avec la version en commentaire. Pour mettre à jour : `git ls-remote https://github.com/actions/<action> refs/tags/vX.Y.Z`, vérifier le `using: node24` de son `action.yml`.

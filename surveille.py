@@ -154,15 +154,25 @@ try:
         complet = bool(COMPLET.search(texte))
         vues = heures(texte)
         if prochain:
-            # Le créneau est plus loin dans le calendrier : on clique sur le message pour y aller
-            # et lire l'heure. Si le clic ne mène nulle part, on garde au moins la date.
+            # Le créneau est plus loin dans le calendrier : on va à sa semaine pour lire l'heure.
+            # Le lien est le bouton « Cliquez ici pour y accéder » (le texte « Prochaine
+            # disponibilité le JJ/MM » n'est pas cliquable). Sinon, on garde au moins la date.
             try:
-                page.get_by_text(re.compile("prochain", re.I)).first.click(timeout=5000)
+                lien = page.get_by_text(re.compile(r"y acc[eé]der", re.I))
+                if not lien.count():
+                    lien = page.get_by_text(re.compile("prochain", re.I))
+                lien.first.click(timeout=5000)
                 page.wait_for_load_state("networkidle")
-                page.wait_for_timeout(2000)
-                texte = lire_texte(page)
-                vues = heures(texte)
+                # Les créneaux peuvent s'afficher avec retard : jusqu'à 10 s pour voir une heure.
+                for _ in range(10):
+                    page.wait_for_timeout(1000)
+                    texte = lire_texte(page)
+                    vues = heures(texte)
+                    if vues:
+                        break
                 etape("semaine du prochain RDV chargée")
+                if not vues:
+                    print("Semaine du prochain RDV ouverte, mais aucune heure lue")
                 capture = capturer(page)  # la semaine du créneau, plus parlante que la semaine en cours
             except Exception as e:
                 print("Impossible d'ouvrir la semaine du prochain RDV :", resume_erreur(e))

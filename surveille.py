@@ -22,10 +22,10 @@ COMPLET = re.compile(r"aucune\s+disponibilit", re.I)
 PLAGE = re.compile(r"\b\d{1,2}\s?[h:]\s?\d{2}\s*(?:-|–|à|a)\s*\d{1,2}\s?[h:]\s?\d{2}\b")
 
 
-def envoyer(titre, message, prio="high", capture=None):
+def envoyer(titre, message, capture=None):
     """Notification Pushover, avec éventuellement une capture d'écran (JPEG) en pièce jointe."""
     data = {"token": os.environ["PUSHOVER_TOKEN"], "user": os.environ["PUSHOVER_USER"],
-            "title": titre, "message": message, "priority": 1 if prio == "high" else 0,
+            "title": titre, "message": message, "priority": 0,  # priorité normale pour toutes les notifications
             "url": URL, "url_title": "Réserver",
             "ttl": 7 * 24 * 3600}  # la notification s'efface d'elle-même au bout de 7 jours
     api = "https://api.pushover.net/1/messages.json"
@@ -209,14 +209,14 @@ try:
         detail = ("Le message « Aucune disponibilité » n'apparaît plus depuis 2 passages : "
                   "de nouveaux créneaux sont peut-être ouverts.")
     if test:
-        envoyer("Test surveillance dentiste", f"Ça marche ! {detail}", prio="default", capture=capture)
+        envoyer("Test surveillance dentiste", f"Ça marche ! {detail}", capture=capture)
     if alerte:
         envoyer("Créneau dentiste dispo !", detail, capture=capture)
     ETAT.parent.mkdir(exist_ok=True)
     ETAT.write_text(json.dumps({"prochain": prochain.isoformat() if prochain else None, "heures": vues,
                                  "complet": complet, "absences": absences}))
     if PANNE.exists():
-        envoyer("Surveillance dentiste rétablie", "La vérification fonctionne de nouveau.", prio="default")
+        envoyer("Surveillance dentiste rétablie", "La vérification fonctionne de nouveau.")
         PANNE.unlink()
 except Exception as e:
     # Pas de trace complète : elle pourrait contenir du texte de la page (logs publics).
@@ -224,7 +224,7 @@ except Exception as e:
     # Une seule alerte par panne, pas une à chaque passage.
     if not PANNE.exists():
         try:
-            envoyer("Surveillance dentiste en panne", resume_erreur(e), prio="default", capture=capture)
+            envoyer("Surveillance dentiste en panne", resume_erreur(e), capture=capture)
             PANNE.parent.mkdir(exist_ok=True)
             PANNE.write_text(resume_erreur(e))
         except Exception as e2:

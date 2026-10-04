@@ -107,6 +107,35 @@ def lire_texte(page):
     return "\n".join(textes)
 
 
+def ouvrir_semaine_prochain_rdv(page):
+    """Clique sur « Cliquez ici pour y accéder » (sinon sur le message « Prochaine disponibilité »).
+
+    Le texte peut exister en plusieurs exemplaires, dont des masqués : on essaie d'abord un vrai
+    clic sur chaque exemplaire visible, puis un clic JavaScript (qui ignore visibilité et éléments
+    superposés). Les logs n'indiquent que la méthode retenue, rien de ce qu'affiche la page.
+    """
+    for nom, motif in (("bouton « y accéder »", r"y acc[eé]der"), ("message « prochain »", r"prochain")):
+        candidats = page.get_by_text(re.compile(motif, re.I))
+        n = candidats.count()
+        visibles = [i for i in range(n) if candidats.nth(i).is_visible()]
+        print(f"{nom} : {n} élément(s), dont {len(visibles)} visible(s)")
+        for i in visibles:
+            try:
+                candidats.nth(i).click(timeout=3000)
+                print(f"Clic réussi : {nom}, exemplaire visible n°{i + 1}")
+                return True
+            except Exception as e:
+                print(f"Clic refusé ({nom} n°{i + 1}) :", resume_erreur(e))
+        for i in range(n):
+            try:
+                candidats.nth(i).evaluate("e => e.click()")
+                print(f"Clic JavaScript : {nom}, exemplaire n°{i + 1}")
+                return True
+            except Exception as e:
+                print(f"Clic JavaScript refusé ({nom} n°{i + 1}) :", resume_erreur(e))
+    return False
+
+
 capture = None  # dernière capture d'écran, jointe aux alertes, aux tests et aux pannes
 try:
     with sync_playwright() as p:
@@ -158,10 +187,8 @@ try:
             # Le lien est le bouton « Cliquez ici pour y accéder » (le texte « Prochaine
             # disponibilité le JJ/MM » n'est pas cliquable). Sinon, on garde au moins la date.
             try:
-                lien = page.get_by_text(re.compile(r"y acc[eé]der", re.I))
-                if not lien.count():
-                    lien = page.get_by_text(re.compile("prochain", re.I))
-                lien.first.click(timeout=5000)
+                if not ouvrir_semaine_prochain_rdv(page):
+                    raise RuntimeError("aucun lien cliquable vers la semaine du prochain RDV")
                 page.wait_for_load_state("networkidle")
                 # Les créneaux peuvent s'afficher avec retard : jusqu'à 10 s pour voir une heure.
                 for _ in range(10):
